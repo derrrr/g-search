@@ -6,7 +6,6 @@ import codecs
 import random
 import shutil
 import requests
-# import webbrowser
 import configparser
 import pandas as pd
 from pathlib import Path
@@ -16,7 +15,6 @@ from bs4 import BeautifulSoup as BS
 from selenium.webdriver.chrome.options import Options
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
-# import urllib.parse
 
 
 def _load_config():
@@ -121,9 +119,6 @@ class G_search:
             print(recapt_url)
             print("被Google ban了QQ")
             print("請換IP或手動解reCAPTCHA(手解不一定有效)或等到Google自己解除\n")
-
-            canary_path = self.config["Chrome_Canary"]["CHROME_PATH"].format(self.home_path)
-            # webbrowser.get("{} %s".format(canary_path)).open_new(recapt_url)
             sys.exit()
 
         # Save origin html with utf-8 encoding
