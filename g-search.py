@@ -22,6 +22,7 @@ def _load_config():
     config.read_file(codecs.open("./config.ini", "r", "utf8"))
     return config
 
+
 def _requests_retry_session(config, retries=3, backoff_factor=0.3, status_forcelist=(500, 502, 504), session=None):
     session = requests.session()
     headers = {"user-agent": config["requests_header"]["user-agent"]}
@@ -247,8 +248,12 @@ class G_search:
         df = df.drop(labels=["page"], axis=1)
         df.to_csv(path_or_buf=result_path, index=False, encoding="utf-8-sig")
 
-        shutil.rmtree("./project/{}/no_ads".format(self.project_name))
-        shutil.rmtree("./project/{}/origin".format(self.project_name))
+    def remove_temp_dir(self):
+        dir_list = ["no_ads", "origin"]
+        for rm_dir in dir_list:
+            rm_path = "./project/{}/{}".format(self.project_name, rm_dir)
+            if os.path.exists(rm_path):
+                shutil.rmtree(rm_path)
 
     def screenshot(self, html_path, key_word, page_count):
         screenshot_dir = "./project/{}/screenshot/{}".format(self.project_name, self.date_str)
@@ -295,6 +300,7 @@ class G_search:
             self.target_list, self.keyword_list = self.get_keyword_and_target(self.project_name)
             if self.keyword_last == None:
                 print("--{} 已完成--\n".format(self.project_name))
+                self.remove_temp_dir()
                 continue
             elif self.keyword_last > 0 or self.url_last > 0:
                 print("從第{}個關鍵字 第{}個目標網址 繼續\n".format(self.keyword_last + 1, self.url_last))
@@ -314,6 +320,7 @@ class G_search:
                 print("第{} / {}個關鍵字完成\t進度: {:.2%}\n".format(keyword_count, len(self.keyword_list), keyword[0]/len(self.keyword_list)))
                 keyword_count += 1
             self.result_end()
+            self.remove_temp_dir()
             print("--{} 已完成--\n".format(self.project_name))
         print("==全部完成 花費時間: {}==".format(str(datetime.now().replace(microsecond=0) - start_time)))
 
