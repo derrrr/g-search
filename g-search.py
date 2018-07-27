@@ -11,6 +11,7 @@ import pandas as pd
 from pathlib import Path
 from datetime import datetime
 from selenium import webdriver
+from urllib.parse import unquote
 from bs4 import BeautifulSoup as BS
 from selenium.webdriver.chrome.options import Options
 from requests.adapters import HTTPAdapter
@@ -25,7 +26,7 @@ def _load_config():
 
 def _requests_retry_session(config, retries=3, backoff_factor=0.3, status_forcelist=(500, 502, 504), session=None):
     session = requests.session()
-    headers = {"user-agent": config["requests_header"]["user-agent"]}
+    headers = {"user-agent": config["Requests_header"]["user-agent"]}
     session.headers.update(headers)
     retry = Retry(
         total=retries,
@@ -85,6 +86,12 @@ class G_search:
         sheet_target = sheet_target[sheet_target["序號"].apply(lambda x: isRational(x))].reset_index(drop=True).dropna(subset=["序號"])
         sheet_target["序號"] = sheet_target["序號"].values.astype(int)
 
+        op_dir = "./project/{}/operation".format(self.project_name)
+        if not os.path.exists(op_dir):
+            os.makedirs(op_dir)
+        target_path = "{}/{}_{}_target.csv".format(op_dir, self.date_str, self.project_name)
+        sheet_target[["序號", "標題", "網址"]].to_csv(target_path, index=False, encoding="utf-8-sig")
+
         ## Keyword
         pre_sheet = pd.read_excel(project_path, sheet_name=attach_2)
         # Find the first row
@@ -95,6 +102,10 @@ class G_search:
         op_sheet.columns = op_sheet.columns.str.replace("\n", "")
         # Change first column header to "W"
         op_sheet.columns.values[0] = "W"
+
+        keyword_path = "{}/{}_{}_keyword.csv".format(op_dir, self.date_str, self.project_name)
+        op_sheet[["W", "操作目標字"]].to_csv(keyword_path, index=False, encoding="utf-8-sig")
+
         return sheet_target[["序號", "標題", "網址"]].values.tolist(), \
                 op_sheet[["W", "操作目標字"]].values.tolist()
 
@@ -192,11 +203,13 @@ class G_search:
     def search_html(self, html, key_word, page_x, page_count):
         self.found = 0
         soup_no_ad = BS(html, "lxml")
+        title_slice = int(self.config["Title_part"]["slice"])
         for target in self.target_list[self.url_last:]:
             rank = 1
             self.search = 0
             for s_res in soup_no_ad.find(id="ires").find_all(class_="g"):
-                if target[2] in s_res.a["href"]:
+                title_part = re.sub("\s*\.*\\n\s*", "", str(s_res.a.string))[:title_slice]
+                if unquote(target[2]) in unquote(s_res.a["href"]) or title_part in target[1]:
                     s_res.find(class_="rc")["style"] = "border-width:2px; border-style:solid; border-color:red; padding:1px;"
                     message = "關鍵字: {} {}\t在 第{}頁 第{}個 找到\n{}".format(\
                         key_word[0], key_word[1], page_count, rank, target[2])
@@ -246,7 +259,7 @@ class G_search:
         df["page"] = df["搜尋結果頁"].map(self.page_dict)
         df = df.sort_values(["W", "序號", "page"], ascending=[True, False, True])
         df = df.drop(labels=["page"], axis=1)
-        df.to_csv(path_or_buf=result_path, index=False, encoding="utf-8-sig")
+        df.to_csv(result_path, index=False, encoding="utf-8-sig")
 
     def remove_temp_dir(self):
         dir_list = ["no_ads", "origin"]
@@ -290,8 +303,8 @@ class G_search:
     def process(self):
         start_time = datetime.now().replace(microsecond=0)
 
-        min_sleep = float(self.config["sleep_time"]["min"])
-        max_sleep = float(self.config["sleep_time"]["max"])
+        min_sleep = float(self.config["Sleep_time"]["min"])
+        max_sleep = float(self.config["Sleep_time"]["max"])
 
         for project in self.project_list:
             self.project_name = project
