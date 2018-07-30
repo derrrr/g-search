@@ -116,7 +116,7 @@ class G_search:
 
     def html_preprocess(self, key_word, count):
         url = "http://www.google.com/search?q={}&ie=utf-8&oe=utf-8&start={}".format(key_word, count)
-        res = self.rs.get(url)
+        res = self.rs.get(url, timeout=9)
         res_text = res.text
         soup = BS(res_text, "lxml")
 
@@ -216,12 +216,12 @@ class G_search:
                     print(message)
                     self.found = 1
                     self.search = 1
-                    result_row = "{},{},\"{}\",\"{}\",\"{}\",{}\n".format(\
-                        target[0], key_word[0], key_word[1], target[1], target[2], page_x)
+                    result_row = "{},{},\"{}\",\"{}\",\"{}\",{}, {}\n".format(\
+                        target[0], key_word[0], key_word[1], target[1], target[2], page_x, 1)
                     self.search_result(result_row)
                 rank += 1
             if self.search == 0:
-                result_row = "{},{},\"not found and will be remove\",,,\n".format(target[0], key_word[0])
+                result_row = "{},{},\"not found and will be remove\",,,,\n".format(target[0], key_word[0])
                 self.search_result(result_row)
         self.url_last = 0
 
@@ -249,7 +249,7 @@ class G_search:
         # rm_pat = "not found and will be remove"
         # if os.path.exists(result_path):
         df = pd.read_csv(result_path, encoding="utf-8-sig", header=None, engine="python")
-        res_cols = ["序號", "W", "操作關鍵字", "標題", "操作網址", "搜尋結果頁"]
+        res_cols = ["序號", "W", "操作關鍵字", "標題", "操作網址", "搜尋結果頁", datetime.today().strftime("%Y/%m/%d")]
         df.columns = res_cols
         # Clear the not found lines
         df = df[df["操作關鍵字"].str.contains("not found and will be remove") == False]
