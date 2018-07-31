@@ -272,8 +272,8 @@ class G_search:
         df = pd.concat(dfs, sort=False, ignore_index=True)
         df = df.groupby(["序號", "W", "操作關鍵字", "標題", "操作網址", "搜尋結果頁"]).sum().reset_index()
         df.iloc[:, 6:] = df.iloc[:, 6:].values.astype(int)
-        df["page"] = df["搜尋結果頁"].map(self.page_dict)
         # Sort the concatenated dataframe
+        df["page"] = df["搜尋結果頁"].map(self.page_dict)
         df = df.sort_values(["W", "序號", "page"], ascending=[True, True, True])
         df = df.drop(labels=["page"], axis=1)
         concat_dir = "./project/{}/concat".format(self.project_name)
