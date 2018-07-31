@@ -271,6 +271,7 @@ class G_search:
         dfs = [pd.read_csv(f, encoding="utf-8-sig", engine="python") for f in csv_files]
         df = pd.concat(dfs, sort=False, ignore_index=True)
         df = df.groupby(["序號", "W", "操作關鍵字", "標題", "操作網址", "搜尋結果頁"]).sum().reset_index()
+        df.iloc[:, 6:] = df.iloc[:, 6:].values.astype(int)
         df["page"] = df["搜尋結果頁"].map(self.page_dict)
         # Sort the concatenated dataframe
         df = df.sort_values(["W", "序號", "page"], ascending=[True, True, True])
