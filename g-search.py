@@ -58,10 +58,10 @@ class G_search:
         self.home_path = str(Path.home()).replace("\\", "/")
 
     def get_project(self):
-        project_dir = "./excel"
-        if not os.path.exists(project_dir):
-            os.makedirs(project_dir)
-        project = [os.path.splitext(filename)[0] for filename in os.listdir(project_dir)]
+        excel_dir = "./excel"
+        if not os.path.exists(excel_dir):
+            os.makedirs(excel_dir)
+        project = [os.path.splitext(filename)[0] for filename in os.listdir(excel_dir)]
         print("Get project: {}\n".format(", ".join(project)))
         for p in project:
             if not os.path.exists("./project/{}".format(p)):
@@ -257,9 +257,30 @@ class G_search:
         df.drop_duplicates(keep="first", inplace=True)
         # Sort the result
         df["page"] = df["搜尋結果頁"].map(self.page_dict)
-        df = df.sort_values(["W", "序號", "page"], ascending=[True, False, True])
+        df = df.sort_values(["W", "序號", "page"], ascending=[True, True, True])
         df = df.drop(labels=["page"], axis=1)
         df.to_csv(result_path, index=False, encoding="utf-8-sig")
+
+    def concat(self):
+        result_dir = "./project/{}/result".format(self.project_name)
+        csv_files = []
+        for dirpath, subdirs, files in os.walk(result_dir):
+            for x in files:
+                if x.endswith(".csv"):
+                    csv_files.append(os.path.join(dirpath, x))
+        dfs = [pd.read_csv(f, encoding="utf-8-sig", engine="python") for f in csv_files]
+        df = pd.concat(dfs, sort=False, ignore_index=True)
+        df = df.groupby(["序號", "W", "操作關鍵字", "標題", "操作網址", "搜尋結果頁"]).sum().reset_index()
+        df["page"] = df["搜尋結果頁"].map(self.page_dict)
+        # Sort the concatenated dataframe
+        df = df.sort_values(["W", "序號", "page"], ascending=[True, True, True])
+        df = df.drop(labels=["page"], axis=1)
+        concat_dir = "./project/{}/concat".format(self.project_name)
+        if not os.path.exists(concat_dir):
+            os.makedirs(concat_dir)
+        concat_path = "{}/concat_{}_{}.csv".format(concat_dir, self.project_name, self.date_str)
+        df.to_csv(concat_path, index=False, encoding="utf-8-sig")
+
 
     def remove_temp_dir(self):
         dir_list = ["no_ads", "origin"]
@@ -313,6 +334,7 @@ class G_search:
             self.target_list, self.keyword_list = self.get_keyword_and_target(self.project_name)
             if self.keyword_last == None:
                 print("--{} 已完成--\n".format(self.project_name))
+                self.concat()
                 self.remove_temp_dir()
                 continue
             elif self.keyword_last > 0 or self.url_last > 0:
@@ -333,6 +355,7 @@ class G_search:
                 print("第{} / {}個關鍵字完成\t進度: {:.2%}\n".format(keyword_count, len(self.keyword_list), keyword[0]/len(self.keyword_list)))
                 keyword_count += 1
             self.result_end()
+            self.concat()
             self.remove_temp_dir()
             print("--{} 已完成--\n".format(self.project_name))
         print("==全部完成 花費時間: {}==".format(str(datetime.now().replace(microsecond=0) - start_time)))
