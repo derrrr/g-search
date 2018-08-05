@@ -9,9 +9,10 @@ import requests
 import configparser
 import pandas as pd
 from pathlib import Path
+from chardet import detect
 from datetime import datetime
 from selenium import webdriver
-from urllib.parse import unquote
+from urllib.parse import unquote, urlparse
 from bs4 import BeautifulSoup as BS
 from selenium.webdriver.chrome.options import Options
 from requests.adapters import HTTPAdapter
@@ -19,8 +20,11 @@ from requests.packages.urllib3.util.retry import Retry
 
 
 def _load_config():
+    config_path = "./config.ini"
+    with open(config_path, "rb") as ef:
+        config_encoding = detect(ef.read())["encoding"]
     config = configparser.ConfigParser()
-    config.read_file(codecs.open("./config.ini", "r", "utf8"))
+    config.read_file(codecs.open(config_path, "r", config_encoding))
     return config
 
 
@@ -56,6 +60,7 @@ class G_search:
         self.page_dict = self.Google_page()
         self.date_str = datetime.today().strftime("%Y%m%d")
         self.home_path = str(Path.home()).replace("\\", "/")
+        self.chrome_options = self.selenium_setting()
 
     def get_project(self):
         excel_dir = "./excel"
@@ -115,7 +120,7 @@ class G_search:
         return dict(zip(page_key, page_parameter))
 
     def html_preprocess(self, key_word, count):
-        url = "http://www.google.com/search?q={}&ie=utf-8&oe=utf-8&start={}".format(key_word, count)
+        url = "http://www.google.com/search?q={}&hl=zh-TW&ie=utf-8&oe=utf-8&start={}".format(key_word, count)
         res = self.rs.get(url, timeout=9)
         res_text = res.text
         soup = BS(res_text, "lxml")
@@ -158,7 +163,7 @@ class G_search:
         for check in soup_p.find_all(id="taw"):
             check.decompose()
         # Remove the privacy reminder
-        for check in soup_p.find_all(class_="gb_bd gb_cd gb_0c gb_gd"):
+        for check in soup_p.find_all("div", attrs={"aria-label": "選擇適合你的隱私權設定"}):
             check.decompose()
         # Remove Chrome version check
         for version_check in soup_p.find_all(class_="gb_Ad gb_0c"):
@@ -209,7 +214,7 @@ class G_search:
             self.search = 0
             for s_res in soup_no_ad.find(id="ires").find_all(class_="g"):
                 title_part = re.sub("\s*\.*\\n\s*", "", str(s_res.a.string))[:title_slice]
-                if unquote(target[2]) in unquote(s_res.a["href"]) or title_part in target[1]:
+                if unquote(target[2]) in unquote(s_res.a["href"]) or (title_part in target[1] and urlparse(unquote(target[2])).hostname in urlparse(unquote(s_res.a["href"])).hostname):
                     s_res.find(class_="rc")["style"] = "border-width:2px; border-style:solid; border-color:red; padding:1px;"
                     message = "關鍵字: {} {}\t在 第{}頁 第{}個 找到\n{}".format(\
                         key_word[0], key_word[1], page_count, rank, target[2])
@@ -267,7 +272,7 @@ class G_search:
         for dirpath, subdirs, files in os.walk(result_dir):
             for x in files:
                 if x.endswith(".csv"):
-                    csv_files.append(os.path.join(dirpath, x))
+                    csv_files.append(os.path.join(dirpath, x).replace("\\", "/"))
         dfs = [pd.read_csv(f, encoding="utf-8-sig", engine="python") for f in csv_files]
         df = pd.concat(dfs, sort=False, ignore_index=True)
         df = df.groupby(["序號", "W", "操作關鍵字", "標題", "操作網址", "搜尋結果頁"]).sum().reset_index()
@@ -290,11 +295,51 @@ class G_search:
             if os.path.exists(rm_path):
                 shutil.rmtree(rm_path)
 
-    def screenshot(self, html_path, key_word, page_count):
+    def check_screenshot(self):
+        frame_dir = "./project/{}/frame/{}".format(self.project_name, self.date_str)
         screenshot_dir = "./project/{}/screenshot/{}".format(self.project_name, self.date_str)
-        if not os.path.exists(screenshot_dir):
-            os.makedirs(screenshot_dir)
+        frame_num = len(os.listdir(frame_dir))
+        shot_num = len(os.listdir(screenshot_dir))
+        if frame_num > shot_num:
+            print("html數量和screen數量不一致 html: {} screenshot: {}".format(frame_num, shot_num))
+            print("{} 重截圖".format(self.project_name))
+            self.re_screenshot()
+            print("{} 重截圖完成\n".format(self.project_name))
+        elif frame_num < shot_num:
+            print("html數量和screen數量不一致 html: {} screenshot: {}".format(frame_num, shot_num))
+            print("截圖比html多！？")
 
+    def re_screenshot(self):
+        frame_dir = "./project/{}/frame/{}".format(self.project_name, self.date_str)
+        screenshot_dir = "./project/{}/screenshot/{}".format(self.project_name, self.date_str)
+        frame_files = []
+        for dirpath, subdirs, files in os.walk(frame_dir):
+            for x in files:
+                if x.endswith(".html"):
+                    frame_files.append([os.path.join(dirpath, x).replace("\\", "/"), x[:-5]])
+
+        screenshot_files = []
+        for dirpath, subdirs, files in os.walk(screenshot_dir):
+            for x in files:
+                if x.endswith(".png"):
+                    screenshot_files.append(x[:-4])
+
+        for file in frame_files:
+            if not file[1] in screenshot_files:
+                driver = webdriver.Chrome(
+                    executable_path=self.config["Chrome_Canary"]["CHROMEDRIVER_PATH"],
+                    chrome_options=self.chrome_options
+                        )
+                driver.get("file:///{}".format(file[0]))
+                width  = driver.execute_script("return Math.max(document.body.scrollWidth, document.body.offsetWidth, document.documentElement.clientWidth, document.documentElement.scrollWidth, document.documentElement.offsetWidth);")
+                height = driver.execute_script("return Math.max(document.body.scrollHeight, document.body.offsetHeight, document.documentElement.clientHeight, document.documentElement.scrollHeight, document.documentElement.offsetHeight);")
+                driver.set_window_size(width, height)
+                print("screenshot: {}.png".format(file[1]))
+                save_path = "{}/{}.png".format(screenshot_dir, file[1])
+                driver.save_screenshot(save_path)
+                driver.quit()
+
+    def selenium_setting(self):
         # Selenium setting
         chrome_options = Options()
         chrome_options.set_headless(headless=True)
@@ -310,10 +355,17 @@ class G_search:
         chrome_options.add_argument("--disable-extensions")
         # chrome_options.add_argument("--test-type")
         chrome_options.binary_location = self.config["Chrome_Canary"]["CHROME_PATH"].format(self.home_path)
+        return chrome_options
+
+    def screenshot(self, html_path, key_word, page_count):
+        screenshot_dir = "./project/{}/screenshot/{}".format(self.project_name, self.date_str)
+        if not os.path.exists(screenshot_dir):
+            os.makedirs(screenshot_dir)
+
         driver = webdriver.Chrome(
             executable_path=self.config["Chrome_Canary"]["CHROMEDRIVER_PATH"],
-            chrome_options=chrome_options
-                )
+            chrome_options=self.chrome_options
+        )
         driver.get("file:///{}".format(html_path))
         width  = driver.execute_script("return Math.max(document.body.scrollWidth, document.body.offsetWidth, document.documentElement.clientWidth, document.documentElement.scrollWidth, document.documentElement.offsetWidth);")
         height = driver.execute_script("return Math.max(document.body.scrollHeight, document.body.offsetHeight, document.documentElement.clientHeight, document.documentElement.scrollHeight, document.documentElement.offsetHeight);")
@@ -337,6 +389,7 @@ class G_search:
                 print("--{} 已完成--\n".format(self.project_name))
                 self.concat()
                 self.remove_temp_dir()
+                self.check_screenshot()
                 continue
             elif self.keyword_last > 0 or self.url_last > 0:
                 print("從第{}個關鍵字 第{}個目標網址 繼續\n".format(self.keyword_last + 1, self.url_last))
@@ -353,11 +406,12 @@ class G_search:
                     sleep_time = random.uniform(min_sleep, max_sleep)
                     print("Sleep for {:.1f} secs.".format(sleep_time))
                     time.sleep(sleep_time)
-                print("第{} / {}個關鍵字完成\t進度: {:.2%}\n".format(keyword_count, len(self.keyword_list), keyword[0]/len(self.keyword_list)))
+                print("第{} / {}個關鍵字完成\t進度: {:.2%}\n".format(keyword_count + self.keyword_last, len(self.keyword_list), keyword[0]/len(self.keyword_list)))
                 keyword_count += 1
             self.result_end()
             self.concat()
             self.remove_temp_dir()
+            self.check_screenshot()
             print("--{} 已完成--\n".format(self.project_name))
         print("==全部完成 花費時間: {}==".format(str(datetime.now().replace(microsecond=0) - start_time)))
 
