@@ -250,8 +250,6 @@ class G_search:
     def result_end(self):
         result_dir = "./project/{}/result".format(self.project_name)
         result_path = "{}/result_{}_{}.csv".format(result_dir, self.project_name, self.date_str)
-        # temp_path = "{}/result_{}_{}-temp.csv".format(result_dir, self.project_name, self.date_str)
-        # rm_pat = "not found and will be remove"
         # if os.path.exists(result_path):
         df = pd.read_csv(result_path, encoding="utf-8-sig", header=None, engine="python")
         res_cols = ["序號", "W", "操作關鍵字", "標題", "操作網址", "搜尋結果頁", datetime.today().strftime("%Y/%m/%d")]
@@ -263,6 +261,8 @@ class G_search:
         # Sort the result
         df["page"] = df["搜尋結果頁"].map(self.page_dict)
         df = df.sort_values(["W", "序號", "page"], ascending=[True, True, True])
+        # Drop rows as a keyword and a target found more than 1 page
+        df = df[~df[["序號", "W"]].duplicated(keep="first")]
         df = df.drop(labels=["page"], axis=1)
         df.to_csv(result_path, index=False, encoding="utf-8-sig")
 
