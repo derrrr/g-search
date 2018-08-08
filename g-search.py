@@ -209,12 +209,14 @@ class G_search:
         self.found = 0
         soup_no_ad = BS(html, "lxml")
         title_slice = int(self.config["Title_part"]["slice"])
+        url_pat = re.compile("(\/([\d\-\/]*))-.*")
         for target in self.target_list[self.url_last:]:
             rank = 1
             self.search = 0
             for s_res in soup_no_ad.find(id="ires").find_all(class_="g"):
                 title_part = re.sub("\s*\.*\\n\s*", "", str(s_res.a.string))
-                if unquote(target[2]) == unquote(s_res.a["href"]) or (target[1][:title_slice] == title_part[:title_slice] and urlparse(unquote(target[2])).hostname == urlparse(unquote(s_res.a["href"])).hostname):
+                if unquote(target[2]) in unquote(s_res.a["href"]) and url_pat.sub("\\1", unquote(target[2])) == url_pat.sub("\\1", unquote(s_res.a["href"])) \
+                    or (target[1][:title_slice] == title_part[:title_slice] and urlparse(unquote(target[2])).hostname == urlparse(unquote(s_res.a["href"])).hostname):
                     s_res.find(class_="rc")["style"] = "border-width:2px; border-style:solid; border-color:red; padding:1px;"
                     message = "關鍵字: {} {}\t在 第{}頁 第{}個 找到\n{}".format(\
                         key_word[0], key_word[1], page_count, rank, target[2])
@@ -262,7 +264,7 @@ class G_search:
         df["page"] = df["搜尋結果頁"].map(self.page_dict)
         df = df.sort_values(["W", "序號", "page"], ascending=[True, True, True])
         # Drop rows as a keyword and a target found more than 1 page
-        df = df[~df[["序號", "W"]].duplicated(keep="first")]
+        # df = df[~df[["序號", "W"]].duplicated(keep="first")]
         df = df.drop(labels=["page"], axis=1)
         df.to_csv(result_path, index=False, encoding="utf-8-sig")
 
@@ -286,7 +288,6 @@ class G_search:
             os.makedirs(concat_dir)
         concat_path = "{}/concat_{}_{}.csv".format(concat_dir, self.project_name, self.date_str)
         df.to_csv(concat_path, index=False, encoding="utf-8-sig")
-
 
     def remove_temp_dir(self):
         dir_list = ["no_ads", "origin"]
