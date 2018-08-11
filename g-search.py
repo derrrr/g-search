@@ -127,6 +127,9 @@ class G_search:
 
         # Set "utf-8"
         soup.find("meta")["charset"] = "utf-8"
+        # Set fbarcnt as visible
+        soup.find(id="fbarcnt")["style"] = "position:relative;visibility:visible"
+
         prettified = soup.prettify()
 
         if soup.find(id="recaptcha"):
