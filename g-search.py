@@ -177,11 +177,9 @@ class G_search:
         # Add url prefix to img src
         add_prefix = lambda src: "http://www.google.com.tw{}".format(src)
         src_to_fix = [soup_p.find(itemprop="image")["content"], \
-                      soup_p.find(rel="shortcut icon")["href"], \
                       soup_p.find(id="logocont").find("a").find("img")["src"]]
         src_fixed = list(map(add_prefix, src_to_fix))
-        soup_p.find(id="logocont").find("a").find("img")["src"], \
-            soup_p.find(itemprop="image")["content"], \
+        soup_p.find(itemprop="image")["content"], \
             soup_p.find(id="logocont").find("a").find("img")["src"] = src_fixed
         # Save no-ads html
         no_ads_dir = "./project/{}/no_ads".format(self.project_name)
