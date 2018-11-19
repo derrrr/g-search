@@ -165,11 +165,11 @@ class G_search:
         # Remove the privacy check
         for check in soup_p.find_all(id="taw"):
             check.decompose()
-        # Remove the privacy reminder
-        for check in soup_p.find_all("div", attrs={"aria-label": "選擇適合你的隱私權設定"}):
+        # Remove the privacy options
+        for check in soup_p.find_all(role="dialog"):
             check.decompose()
         # Remove Chrome version check
-        for version_check in soup_p.find_all(class_="gb_Ad gb_0c"):
+        for version_check in soup_p.find_all(class_="gb_Fd gb_Zc"):
             version_check.decompose()
         # Add Google map image src
         for g_map in soup_p.find_all(id="lu_map"):
@@ -177,10 +177,10 @@ class G_search:
         # Add url prefix to img src
         add_prefix = lambda src: "http://www.google.com.tw{}".format(src)
         src_to_fix = [soup_p.find(itemprop="image")["content"], \
-                      soup_p.find(id="logocont").find("a").find("img")["src"]]
+                      soup_p.find(class_="logo").find("a").find("img")["src"]]
         src_fixed = list(map(add_prefix, src_to_fix))
         soup_p.find(itemprop="image")["content"], \
-            soup_p.find(id="logocont").find("a").find("img")["src"] = src_fixed
+            soup_p.find(class_="logo").find("a").find("img")["src"] = src_fixed
         # Save no-ads html
         no_ads_dir = "./project/{}/no_ads".format(self.project_name)
         if not os.path.exists(no_ads_dir):
