@@ -214,7 +214,7 @@ class G_search:
         for target in self.target_list[self.url_last:]:
             rank = 1
             self.search = 0
-            for s_res in soup_no_ad.find(id="ires").find_all(class_="g"):
+            for s_res in soup_no_ad.find(id="rso").find_all(class_="g"):
                 title_part = re.sub("\s*\.*\\n\s*", "", str(s_res.a.string))
                 if unquote(target[2]) in unquote(s_res.a["href"]) and url_pat.sub("\\1", unquote(target[2])) == url_pat.sub("\\1", unquote(s_res.a["href"])) \
                     or (target[1][:title_slice] == title_part[:title_slice] and urlparse(unquote(target[2])).hostname == urlparse(unquote(s_res.a["href"])).hostname):
