@@ -15,8 +15,6 @@ from selenium import webdriver
 from urllib.parse import unquote, urlparse
 from bs4 import BeautifulSoup as BS
 from selenium.webdriver.chrome.options import Options
-from requests.adapters import HTTPAdapter
-from requests.packages.urllib3.util.retry import Retry
 
 
 def _load_config():
@@ -28,20 +26,10 @@ def _load_config():
     return config
 
 
-def _requests_retry_session(config, retries=3, backoff_factor=0.3, status_forcelist=(500, 502, 504), session=None):
+def _requests_retry_session(config, status_forcelist=(500, 502, 504), session=None):
     session = requests.session()
     headers = {"user-agent": config["Requests_header"]["user-agent"]}
     session.headers.update(headers)
-    retry = Retry(
-        total=retries,
-        read=retries,
-        connect=retries,
-        backoff_factor=backoff_factor,
-        status_forcelist=status_forcelist
-    )
-    adapter = HTTPAdapter(max_retries=retry)
-    session.mount('http://', adapter)
-    session.mount('https://', adapter)
     return session
 
 
@@ -60,7 +48,7 @@ class G_search:
         self.page_dict = self.Google_page()
         self.date_str = datetime.today().strftime("%Y%m%d")
         self.home_path = str(Path.home()).replace("\\", "/")
-        self.chrome_options = self.selenium_setting()
+        self.chrome_opt = self.selenium_setting()
 
     def get_project(self):
         excel_dir = "./excel"
@@ -86,7 +74,7 @@ class G_search:
         row_target = pre_target.loc[pre_target[pre_target.columns[0]] == 1].index.values.astype(int)[0]
         # Load dataframe
         target_cols = ["序號", "標題", "網址"]
-        sheet_target = pd.read_excel(project_path, sheet_name=attach_1, skiprows=row_target + 1, usecols=2)
+        sheet_target = pd.read_excel(project_path, sheet_name=attach_1, skiprows=row_target + 1, usecols=range(3))
         sheet_target.rename(columns=dict(zip(sheet_target.columns, target_cols)), inplace=True)
         sheet_target = sheet_target[sheet_target["序號"].apply(lambda x: isRational(x))].reset_index(drop=True).dropna(subset=["序號"])
         sheet_target["序號"] = sheet_target["序號"].values.astype(int)
@@ -127,8 +115,8 @@ class G_search:
 
         # Set "utf-8"
         soup.find("meta")["charset"] = "utf-8"
-        # Set fbarcnt as visible
-        soup.find(id="fbarcnt")["style"] = "position:relative;visibility:visible"
+        # Set footcnt as visible
+        soup.find(id="footcnt")["style"] = "position:relative;visibility:visible"
 
         prettified = soup.prettify()
 
@@ -330,7 +318,7 @@ class G_search:
             if not file[1] in screenshot_files:
                 driver = webdriver.Chrome(
                     executable_path=self.config["Chrome_Canary"]["CHROMEDRIVER_PATH"],
-                    chrome_options=self.chrome_options
+                    chrome_opt=self.chrome_opt
                         )
                 driver.get("file:///{}".format(file[0]))
                 width  = driver.execute_script("return Math.max(document.body.scrollWidth, document.body.offsetWidth, document.documentElement.clientWidth, document.documentElement.scrollWidth, document.documentElement.offsetWidth);")
@@ -343,21 +331,21 @@ class G_search:
 
     def selenium_setting(self):
         # Selenium setting
-        chrome_options = Options()
-        chrome_options.set_headless(headless=True)
-        chrome_options.add_argument("--disable-gpu")
-        # chrome_options.add_argument("--disable-software-rasterizer")
-        chrome_options.add_argument("--mute-audio")
-        # chrome_options.add_argument("--remote-debugging-port=9222")
-        chrome_options.add_argument("--ignore-gpu-blacklist")
-        chrome_options.add_argument("--no-default-browser-check")
-        # chrome_options.add_argument("--no-first-run")
-        chrome_options.add_argument("--disable-default-apps")
-        # chrome_options.add_argument("--disable-infobars")
-        chrome_options.add_argument("--disable-extensions")
-        # chrome_options.add_argument("--test-type")
-        chrome_options.binary_location = self.config["Chrome_Canary"]["CHROME_PATH"].format(self.home_path)
-        return chrome_options
+        chrome_opt = Options()
+        chrome_opt.set_headless(headless=True)
+        chrome_opt.add_argument("--disable-gpu")
+        # chrome_opt.add_argument("--disable-software-rasterizer")
+        chrome_opt.add_argument("--mute-audio")
+        # chrome_opt.add_argument("--remote-debugging-port=9222")
+        chrome_opt.add_argument("--ignore-gpu-blocklist")
+        chrome_opt.add_argument("--no-default-browser-check")
+        # chrome_opt.add_argument("--no-first-run")
+        chrome_opt.add_argument("--disable-default-apps")
+        # chrome_opt.add_argument("--disable-infobars")
+        chrome_opt.add_argument("--disable-extensions")
+        # chrome_opt.add_argument("--test-type")
+        chrome_opt.binary_location = self.config["Chrome_Canary"]["CHROME_PATH"].format(self.home_path)
+        return chrome_opt
 
     def screenshot(self, html_path, key_word, page_count):
         screenshot_dir = "./project/{}/screenshot/{}".format(self.project_name, self.date_str)
@@ -366,7 +354,7 @@ class G_search:
 
         driver = webdriver.Chrome(
             executable_path=self.config["Chrome_Canary"]["CHROMEDRIVER_PATH"],
-            chrome_options=self.chrome_options
+            chrome_opt=self.chrome_opt
         )
         driver.get("file:///{}".format(html_path))
         width  = driver.execute_script("return Math.max(document.body.scrollWidth, document.body.offsetWidth, document.documentElement.clientWidth, document.documentElement.scrollWidth, document.documentElement.offsetWidth);")
