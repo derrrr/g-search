@@ -332,7 +332,8 @@ class G_search:
     def selenium_setting(self):
         # Selenium setting
         chrome_opt = Options()
-        chrome_opt.set_headless(headless=True)
+        # chrome_opt.set_headless(headless=True)
+        chrome_opt.headless = True
         chrome_opt.add_argument("--disable-gpu")
         # chrome_opt.add_argument("--disable-software-rasterizer")
         chrome_opt.add_argument("--mute-audio")
@@ -344,6 +345,7 @@ class G_search:
         # chrome_opt.add_argument("--disable-infobars")
         chrome_opt.add_argument("--disable-extensions")
         # chrome_opt.add_argument("--test-type")
+        chrome_opt.add_argument("--hide-scrollbars")
         chrome_opt.binary_location = self.config["Chrome_Canary"]["CHROME_PATH"].format(self.home_path)
         return chrome_opt
 
@@ -354,7 +356,7 @@ class G_search:
 
         driver = webdriver.Chrome(
             executable_path=self.config["Chrome_Canary"]["CHROMEDRIVER_PATH"],
-            chrome_opt=self.chrome_opt
+            options=self.chrome_opt
         )
         driver.get("file:///{}".format(html_path))
         width  = driver.execute_script("return Math.max(document.body.scrollWidth, document.body.offsetWidth, document.documentElement.clientWidth, document.documentElement.scrollWidth, document.documentElement.offsetWidth);")
