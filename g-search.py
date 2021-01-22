@@ -109,16 +109,31 @@ class G_search:
 
     def html_preprocess(self, key_word, count):
         url = "http://www.google.com/search?q={}&hl=zh-TW&ie=utf-8&oe=utf-8&start={}".format(key_word, count)
-        res = self.rs.get(url, timeout=9)
-        res_text = res.text
+
+        # requests was banned
+        # res = self.rs.get(url, timeout=9)
+        # res_text = res.text
+        # soup = BS(res_text, "lxml")
+
+        driver = webdriver.Chrome(
+            executable_path=self.config["Chrome_Canary"]["CHROMEDRIVER_PATH"],
+            options=self.chrome_opt
+        )
+        driver.get(url)
+        res_text = driver.page_source
         soup = BS(res_text, "lxml")
+        driver.quit()
 
         # Set "utf-8"
         soup.find("meta")["charset"] = "utf-8"
-        # Set footcnt as visible
-        soup.find(id="footcnt")["style"] = "position:relative;visibility:visible"
 
-        prettified = soup.prettify()
+        # debug
+        # debug_soup = soup.prettify()
+        # debug_html_dir = "./project/{}/debug".format(self.project_name)
+        # if not os.path.exists(debug_html_dir):
+        #     os.makedirs(debug_html_dir)
+        # with open("{}/res_debug_{}.html".format(debug_html_dir, self.date_str), "w", encoding="utf-8") as save:
+        #     save.write(debug_soup)
 
         if soup.find(id="recaptcha"):
             recapt_continue = soup.find("input", {"name": "continue"})["value"]
@@ -128,6 +143,11 @@ class G_search:
             print("被Google ban了QQ")
             print("請換IP或手動解reCAPTCHA(手解不一定有效)或等到Google自己解除\n")
             sys.exit()
+
+        # Set footcnt as visible
+        soup.find(id="footcnt")["style"] = "position:relative;visibility:visible"
+
+        prettified = soup.prettify()
 
         # Save origin html with utf-8 encoding
         origin_html_dir = "./project/{}/origin".format(self.project_name)
@@ -169,6 +189,10 @@ class G_search:
         src_fixed = list(map(add_prefix, src_to_fix))
         soup_p.find(itemprop="image")["content"], \
             soup_p.find(class_="logo").find("a").find("img")["src"] = src_fixed
+        # Remove the background color of Google Apps
+        style = soup.find("style", text=re.compile("gb_Dd")).text
+        style_fix = soup.find("style", text=re.compile("gb_Dd")).string.replace(";background-color:#4d90fe", "")
+        soup.find("style", text=re.compile("gb_Dd")).string = style_fix
         # Save no-ads html
         no_ads_dir = "./project/{}/no_ads".format(self.project_name)
         if not os.path.exists(no_ads_dir):
@@ -318,8 +342,8 @@ class G_search:
             if not file[1] in screenshot_files:
                 driver = webdriver.Chrome(
                     executable_path=self.config["Chrome_Canary"]["CHROMEDRIVER_PATH"],
-                    chrome_opt=self.chrome_opt
-                        )
+                    options=self.chrome_opt
+                )
                 driver.get("file:///{}".format(file[0]))
                 width  = driver.execute_script("return Math.max(document.body.scrollWidth, document.body.offsetWidth, document.documentElement.clientWidth, document.documentElement.scrollWidth, document.documentElement.offsetWidth);")
                 height = driver.execute_script("return Math.max(document.body.scrollHeight, document.body.offsetHeight, document.documentElement.clientHeight, document.documentElement.scrollHeight, document.documentElement.offsetHeight);")
@@ -346,6 +370,7 @@ class G_search:
         chrome_opt.add_argument("--disable-extensions")
         # chrome_opt.add_argument("--test-type")
         chrome_opt.add_argument("--hide-scrollbars")
+        chrome_opt.add_experimental_option("excludeSwitches", ["enable-logging"])
         chrome_opt.binary_location = self.config["Chrome_Canary"]["CHROME_PATH"].format(self.home_path)
         return chrome_opt
 
