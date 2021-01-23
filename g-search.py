@@ -120,6 +120,7 @@ class G_search:
             options=self.chrome_opt
         )
         driver.get(url)
+        time.sleep(random.uniform(1, 2))
         res_text = driver.page_source
         soup = BS(res_text, "lxml")
         driver.quit()
@@ -190,9 +191,9 @@ class G_search:
         soup_p.find(itemprop="image")["content"], \
             soup_p.find(class_="logo").find("a").find("img")["src"] = src_fixed
         # Remove the background color of Google Apps
-        style = soup.find("style", text=re.compile("gb_Dd")).text
-        style_fix = soup.find("style", text=re.compile("gb_Dd")).string.replace(";background-color:#4d90fe", "")
-        soup.find("style", text=re.compile("gb_Dd")).string = style_fix
+        style = soup_p.find("style", text=re.compile("gb_Dd")).text
+        style_fix = soup_p.find("style", text=re.compile("gb_Dd")).string.replace(";background-color:#4d90fe", "")
+        soup_p.find("style", text=re.compile("gb_Dd")).string = style_fix
         # Save no-ads html
         no_ads_dir = "./project/{}/no_ads".format(self.project_name)
         if not os.path.exists(no_ads_dir):
@@ -230,7 +231,7 @@ class G_search:
                 title_part = re.sub("\s*\.*\\n\s*", "", str(s_res.a.string))
                 if unquote(target[2]) in unquote(s_res.a["href"]) and url_pat.sub("\\1", unquote(target[2])) == url_pat.sub("\\1", unquote(s_res.a["href"])) \
                     or (target[1][:title_slice] == title_part[:title_slice] and urlparse(unquote(target[2])).hostname == urlparse(unquote(s_res.a["href"])).hostname):
-                    s_res.find(class_="rc")["style"] = "border-width:2px; border-style:solid; border-color:red; padding:1px;"
+                    s_res.find(class_="tF2Cxc")["style"] = "border-width:2px; border-style:solid; border-color:red; padding:1px;"
                     message = "關鍵字: {} {}\t在 第{}頁 第{}個 找到\n{}".format(\
                         key_word[0], key_word[1], page_count, rank, target[2])
                     print(message)
