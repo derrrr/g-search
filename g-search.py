@@ -191,9 +191,9 @@ class G_search:
         soup_p.find(itemprop="image")["content"], \
             soup_p.find(class_="logo").find("a").find("img")["src"] = src_fixed
         # Remove the background color of Google Apps
-        style = soup_p.find("style", text=re.compile("gb_Dd")).text
-        style_fix = soup_p.find("style", text=re.compile("gb_Dd")).string.replace(";background-color:#4d90fe", "")
-        soup_p.find("style", text=re.compile("gb_Dd")).string = style_fix
+        # style = soup_p.find("style", text=re.compile("gb_Dd")).text
+        # style_fix = soup_p.find("style", text=re.compile("gb_Dd")).string.replace(";background-color:#4d90fe", "")
+        # soup_p.find("style", text=re.compile("gb_Dd")).string = style_fix
         # Save no-ads html
         no_ads_dir = "./project/{}/no_ads".format(self.project_name)
         if not os.path.exists(no_ads_dir):
